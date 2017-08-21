@@ -18,8 +18,11 @@ git clone --recursive <project URL>
 
 Instantiate the class.
 ```
-var doublespeak = new Doublespeak();
+var doublespeak = new Doublespeak([isDebug]);
 ```
+Param: ```Boolean``` isDebug
+
+Enables debug output to console. Defaults to ```false```.
 
 ## Usage
 

@@ -1,4 +1,4 @@
-function Doublespeak() {
+function Doublespeak(isDebug = false) {
 	this.encVals = Object.freeze({
 		'\u200C': 0x0, // zero width non-joiner
 		'\u200D': 0x1, // zero width joiner
@@ -136,7 +136,7 @@ function Doublespeak() {
 		const bytes = new TextEncoder().encode(this.filterStr(str));
 		// 0x44 0x0 == 'D\u0000' protocol signature and version
 		const out = bytes.length ? this.encodeBytes([0x44, 0x0], this.crc32(bytes), [0x1], this.encodeLength(bytes.length), bytes) : '';
-		console.info('Original size:', bytes.length, 'bytes,', str.length, 'characters',
+		if (isDebug) console.info('Original size:', bytes.length, 'bytes,', str.length, 'characters',
 			'\nEncoded size:', out.length * 3, 'bytes,', out.length, 'characters');
 
 		return out;
@@ -157,7 +157,7 @@ function Doublespeak() {
 
 		// 0x44 0x0 == 'D\u0000' protocol signature and version
 		const str = this.encodeBytes([0x44, 0x0], this.crc32(pack), [0x2], this.encodeLength(pack.length), pack);
-		console.info('File:', name + ',', (type || 'unknown'),
+		if (isDebug) console.info('File:', name + ',', (type || 'unknown'),
 			'\nOriginal size:', bytes.length, 'bytes',
 			'\nEncoded size:', str.length * 3, 'bytes,', str.length, ' characters');
 
@@ -234,7 +234,7 @@ function Doublespeak() {
 			const dataEnd = dataStart + this.decodeLength(header.subarray(5));
 			// Get data field
 			const data = bytes.subarray(dataStart, dataEnd);
-			console.info('Original size:', data.length, 'bytes',
+			if (isDebug) console.info('Original size:', data.length, 'bytes',
 				'\nEncoded size:', dataEnd * 6, 'bytes,', dataEnd * 2, 'characters');
 			// Check CRC-32
 			const crcMatch = this.crc32(data).every((v, i) => v === header[i]);
@@ -284,7 +284,7 @@ function Doublespeak() {
 		for (var i = 0, bLen = bytes.length; i < bLen; i++)
 			crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xFF];
 		crc = (crc ^ -1) >>> 0;
-		console.info('CRC-32: 0x' + ('0000000' + crc.toString(16)).slice(-8));
+		if (isDebug) console.info('CRC-32: 0x' + ('0000000' + crc.toString(16)).slice(-8));
 
 		bytes = [];
 		for (i = 24; i >= 0; i -= 8)
