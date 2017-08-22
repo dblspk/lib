@@ -1,3 +1,11 @@
+/*!
+ * Doublespeak JavaScript Library
+ *
+ * Copyright (c) 2017 Joshua Fan <joshuaptfan@gmail.com>
+ * MIT License
+ *
+ * https://github.com/dblspk/lib
+ */
 function Doublespeak(isDebug = false) {
 	this.encVals = Object.freeze({
 		'\u200C': 0x0, // zero width non-joiner
@@ -207,7 +215,7 @@ function Doublespeak(isDebug = false) {
 		// Loop until all messages extracted
 		do {
 			// Check protocol signature and version
-			if (!bytes.length || (bytes[0] != 0x44 && bytes[1] != 0x0)) {
+			if (!bytes.length || bytes[0] != 0x44 || bytes[1] != 0x0) {
 				if (!bytes.length)
 					out.push({ error: 'No message detected' });
 				else {

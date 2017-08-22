@@ -51,7 +51,9 @@ Encode file info and file byte array to ciphertext.
 Param: ```String``` str  
 Return: ```Object[]``` [{ ```Boolean``` crcMatch, ```Number``` dataType, ```Uint8Array``` data }]
 
-Decode encoded messages in string to array of data objects. dataType determines which "extract..." helper function below should be used to process the data, in conformance with the [specification](https://github.com/dblspk/web-app#how-it-works).
+Decode encoded messages in string to array of data objects.
+
+dataType determines which "extract..." helper function below should be used to process the data, in conformance with the [specification](https://github.com/dblspk/web-app#how-it-works).
 
 ### extractText
 Param: ```Uint8Array``` bytes  
@@ -63,7 +65,9 @@ Convert byte array to [UTF-8](https://en.wikipedia.org/wiki/UTF-8) text.
 Param: ```Uint8Array``` bytes  
 Return: ```Object``` { ```Number``` type, ```String``` name, ```String``` url, ```Number``` size }
 
-Convert byte array to file components. The file itself is not returned, only a downloadable link to the file in RAM. Size is in bytes.
+Convert byte array to file components.
+
+The file itself is not returned, only a downloadable link to the file in RAM. Size is in bytes.
 
 ## License
 
