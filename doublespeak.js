@@ -260,7 +260,7 @@ function Doublespeak(isDebug = false) {
 	 * Initialize CRC-32 table.
 	 * @return {Number[]}
 	 */
-	this.crcTable = (() => {
+	this.crcTable = Object.freeze((() => {
 		let crcTable = [];
 		let c;
 		for (var n = 0; n < 256; n++) {
@@ -270,7 +270,7 @@ function Doublespeak(isDebug = false) {
 			crcTable[n] = c;
 		}
 		return crcTable;
-	})();
+	})());
 
 	/**
 	 * Calculate CRC-32 and convert to byte array
