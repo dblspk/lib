@@ -2,7 +2,7 @@
 
 Encoding/decoding functions for the [Doublespeak protocol](https://github.com/dblspk/web-app#how-it-works).
 
-## Install
+## Setup
 
 Navigate to the parent directory in your project where you want the library to reside, and clone it into your project as a [submodule](https://github.com/blog/2104-working-with-submodules).
 ```
@@ -13,16 +13,11 @@ Thereafter, others who clone your project must do so using the ```--recursive```
 ```
 git clone --recursive <project URL>
 ```
-
-## Setup
-
 Instantiate the class.
 ```
 var doublespeak = new Doublespeak([isDebug]);
 ```
-Param: ```Boolean``` isDebug
-
-Enables debug output to console. Defaults to ```false```.
+Param: ```Boolean``` isDebug &mdash; Enables debug output to console. Defaults to ```false```.
 
 ## Usage
 
@@ -45,7 +40,7 @@ Return: ```String```
 Encode plaintext to ciphertext.
 
 ### encodeFile
-Param: ```String``` type  
+Param: ```String``` type &mdash; [MIME type](https://en.wikipedia.org/wiki/Media_type)  
 Param: ```String``` name  
 Param: ```Uint8Array``` bytes  
 Return: ```String```
@@ -56,7 +51,7 @@ Encode file info and file byte array to ciphertext.
 Param: ```String``` str  
 Return: ```Object[]``` [{ ```Boolean``` crcMatch, ```Number``` dataType, ```Uint8Array``` data }]
 
-Decode encoded messages in string to array of data objects.
+Decode encoded messages in string to array of data objects. dataType determines which "extract..." helper function below should be used to process the data, in conformance with the [specification](https://github.com/dblspk/web-app#how-it-works).
 
 ### extractText
 Param: ```Uint8Array``` bytes  
@@ -66,9 +61,9 @@ Convert byte array to [UTF-8](https://en.wikipedia.org/wiki/UTF-8) text.
 
 ### extractFile
 Param: ```Uint8Array``` bytes  
-Return: ```Object``` { ```String``` name, ```Number``` type, ```String``` url, ```Number``` size }
+Return: ```Object``` { ```Number``` type, ```String``` name, ```String``` url, ```Number``` size }
 
-Convert byte array to file components. The file itself is not returned, only a downloadable link to the file in RAM.
+Convert byte array to file components. The file itself is not returned, only a downloadable link to the file in RAM. Size is in bytes.
 
 ## License
 
