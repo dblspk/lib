@@ -49,7 +49,7 @@ Encode file info and file byte array to ciphertext.
 
 ### decodeData
 Param: ```String``` str  
-Return: ```Object[]``` [{ ```Boolean``` crcMatch, ```Number``` dataType, ```Uint8Array``` data }]
+Return: ```Object``` { ```String``` cover, ```Object``` dataObjs: [{ ```Boolean``` crcMatch, ```Number``` dataType, ```Uint8Array``` data }]}
 
 Decode encoded messages in string to array of data objects.
 

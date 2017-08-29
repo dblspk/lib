@@ -83,15 +83,18 @@ function Doublespeak(isDebug = false) {
 		const encVals = this.encVals;
 
 		// Collect encoding characters and translate to half-bytes
+		let cover = '';
 		let nybles = [];
 		let seqLens = [];
 		for (var i = 0, sLen = str.length; i < sLen;) {
-			var val = encVals[str[i++]];
-			if (val !== undefined) {
+			var val = encVals[str[i]];
+			if (val === undefined)
+				cover += str[i++];
+			else {
 				let seq = [];
 				do {
 					seq.push(val);
-					val = encVals[str[i++]];
+					val = encVals[str[++i]];
 				} while (val !== undefined);
 				// Ignore short sequences of encoding characters
 				if (seq.length < 16) continue;
@@ -108,7 +111,7 @@ function Doublespeak(isDebug = false) {
 		for (var i = 0, nLen = nybles.length; i < nLen; i += 2)
 			bytes.push(nybles[i] << 4 | nybles[i + 1]);
 
-		return { bytes: Uint8Array.from(bytes), seqLens };
+		return { cover, bytes: Uint8Array.from(bytes), seqLens };
 	};
 
 	/**
@@ -207,19 +210,19 @@ function Doublespeak(isDebug = false) {
 	/**
 	 * Decode encoded messages in string to array of data objects.
 	 * @param {String} str
-	 * @return {Object[]}
+	 * @return {Object}
 	 */
 	this.decodeData = function (str) {
-		let { bytes, seqLens } = this.decodeBytes(str);
-		let out = [];
+		let { cover, bytes, seqLens } = this.decodeBytes(str);
+		let dataObjs = [];
 		// Loop until all messages extracted
 		do {
 			// Check protocol signature and version
 			if (!bytes.length || bytes[0] != 0x44 || bytes[1] != 0x0) {
 				if (!bytes.length)
-					out.push({ error: 'No message detected' });
+					dataObjs.push({ error: 'No message detected' });
 				else {
-					out.push({
+					dataObjs.push({
 						error: 'Protocol mismatch',
 						details: '\nData: ' + new TextDecoder().decode(bytes.subarray(seqLens[0]))
 					});
@@ -247,7 +250,7 @@ function Doublespeak(isDebug = false) {
 			// Check CRC-32
 			const crcMatch = this.crc32(data).every((v, i) => v === header[i]);
 
-			out.push({ crcMatch, dataType, data });
+			dataObjs.push({ crcMatch, dataType, data });
 
 			if (crcMatch) {
 				if (dataEnd < seqLens[0])
@@ -261,7 +264,7 @@ function Doublespeak(isDebug = false) {
 			bytes = bytes.subarray(crcMatch ? dataEnd : seqLens.shift());
 		} while (bytes.length);
 
-		return out;
+		return { cover, dataObjs };
 	};
 
 	/**
