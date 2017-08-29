@@ -97,12 +97,15 @@ function Doublespeak(isDebug = false) {
 					val = encVals[str[++i]];
 				} while (val !== undefined);
 				// Ignore short sequences of encoding characters
-				if (seq.length < 16) continue;
-				// If sequence is truncated by an odd number of half-bytes,
-				// drop last half-byte to preserve byte alignment
-				if (seq.length & 1) seq.pop();
-				nybles = nybles.concat(seq);
-				seqLens.push(seq.length >> 1);
+				if (seq.length < 16)
+					cover += seq;
+				else {
+					// If sequence is truncated by an odd number of half-bytes,
+					// drop last half-byte to preserve byte alignment
+					if (seq.length & 1) seq.pop();
+					nybles = nybles.concat(seq);
+					seqLens.push(seq.length >> 1);
+				}
 			}
 		}
 
