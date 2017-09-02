@@ -149,7 +149,7 @@ function Doublespeak(isDebug = false) {
 	this.encodeText = function (str) {
 		const bytes = new TextEncoder().encode(this.filterStr(str));
 		// 0x44 0x0 == 'D\u0000' protocol signature and version
-		const out = bytes.length ? this.encodeBytes([0x44, 0x0], this.crc32(bytes), [0x1], this.encodeLength(bytes.length), bytes) : '';
+		const out = bytes.length ? this.encodeBytes([0x44, 0x0], this.crc32(bytes).bytes, [0x1], this.encodeLength(bytes.length), bytes) : '';
 		if (isDebug) console.info('Original size:', bytes.length, 'bytes,', str.length, 'characters',
 			'\nEncoded size:', out.length * 3, 'bytes,', out.length, 'characters');
 
@@ -170,7 +170,7 @@ function Doublespeak(isDebug = false) {
 		pack.set(bytes, head.length);
 
 		// 0x44 0x0 == 'D\u0000' protocol signature and version
-		const str = this.encodeBytes([0x44, 0x0], this.crc32(pack), [0x2], this.encodeLength(pack.length), pack);
+		const str = this.encodeBytes([0x44, 0x0], this.crc32(pack).bytes, [0x2], this.encodeLength(pack.length), pack);
 		if (isDebug) console.info('File:', name + ',', (type || 'unknown'),
 			'\nOriginal size:', bytes.length, 'bytes',
 			'\nEncoded size:', str.length * 3, 'bytes,', str.length, ' characters');
@@ -251,9 +251,10 @@ function Doublespeak(isDebug = false) {
 			if (isDebug) console.info('Original size:', data.length, 'bytes',
 				'\nEncoded size:', dataEnd * 6, 'bytes,', dataEnd * 2, 'characters');
 			// Check CRC-32
-			const crcMatch = this.crc32(data).every((v, i) => v === header[i]);
+			const crc32 = this.crc32(data);
+			const crcMatch = crc32.bytes.every((v, i) => v === header[i]);
 
-			dataObjs.push({ crcMatch, dataType, data });
+			dataObjs.push({ crcMatch, crc: crc32.crc, dataType, data });
 
 			if (crcMatch) {
 				if (dataEnd < seqLens[0])
@@ -289,7 +290,7 @@ function Doublespeak(isDebug = false) {
 	/**
 	 * Calculate CRC-32 and convert to byte array
 	 * @param {Uint8Array} bytes
-	 * @return {Uint8Array}
+	 * @return {Object}
 	 */
 	this.crc32 = function (bytes) {
 		const crcTable = this.crcTable;
@@ -303,6 +304,6 @@ function Doublespeak(isDebug = false) {
 		bytes = [];
 		for (i = 24; i >= 0; i -= 8)
 			bytes.push(crc >> i & 0xFF);
-		return Uint8Array.from(bytes);
+		return { crc, bytes: Uint8Array.from(bytes) };
 	};
 }
