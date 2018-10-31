@@ -35,17 +35,17 @@ Remove encoded messages from string.
 
 ### encodeText
 Param: ```String``` str  
-Return: ```String```
+Return: ```Promise``` resolves to ```String```
 
-Encode plaintext to ciphertext.
+Encode plaintext to ciphertext. Encrypt if key exists.
 
 ### encodeFile
 Param: ```String``` type &mdash; [MIME type](https://en.wikipedia.org/wiki/Media_type)  
 Param: ```String``` name  
 Param: ```Uint8Array``` bytes  
-Return: ```String```
+Return: ```Promise``` resolves to ```String```
 
-Encode file info and file byte array to ciphertext.
+Encode file info and file byte array to ciphertext. Encrypt if key exists.
 
 ### decodeData
 Param: ```String``` str  
@@ -57,17 +57,23 @@ dataType determines which "extract..." helper function below should be used to p
 
 ### extractText
 Param: ```Uint8Array``` bytes  
-Return: ```String```
+Return: ```Promise``` resolves to ```String```
 
-Convert byte array to [UTF-8](https://en.wikipedia.org/wiki/UTF-8) text.
+Convert byte array to [UTF-8](https://en.wikipedia.org/wiki/UTF-8) text. Decrypt if key exists.
 
 ### extractFile
 Param: ```Uint8Array``` bytes  
-Return: ```Object``` { ```Number``` type, ```String``` name, ```String``` url, ```Number``` size }
+Return: ```Promise``` resolves to ```Object``` { ```Number``` type, ```String``` name, ```String``` url, ```Number``` size }
 
-Convert byte array to file components.
+Convert byte array to file components. Decrypt if key exists.
 
 The file itself is not returned, only a downloadable link to the file in RAM. Size is in bytes.
+
+### deriveKey
+Param: ```String``` pass
+Param: ```String``` salt
+
+Derive 128-bit AES-CTR encryption key from passphrase using PBKDF2, or deletes key if passphrase is blank.
 
 ## License
 

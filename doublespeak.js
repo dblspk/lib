@@ -8,8 +8,8 @@
  */
 function Doublespeak(isDebug = false) {
 	this.encVals = Object.freeze({
-		'\u200C': 0x0, // zero width non-joiner
-		'\u200D': 0x1, // zero width joiner
+		'\u200C': 0x0, // zero-width non-joiner
+		'\u200D': 0x1, // zero-width joiner
 		'\u2060': 0x2, // word joiner
 		'\u2061': 0x3, // function application
 		'\u2062': 0x4, // invisible times
@@ -23,12 +23,12 @@ function Doublespeak(isDebug = false) {
 		'\u206F': 0xC, // nominal digit shapes
 		'\uFE00': 0xD, // variation selector-1
 		'\uFE01': 0xE, // variation selector-2
-		'\uFEFF': 0xF  // zero width non-breaking space
+		'\uFEFF': 0xF  // zero-width non-breaking space
 	});
 	this.encChars = Object.freeze(Object.keys(this.encVals));
 
 	/**
-	 * Encode data length as variable length quantity in byte array.
+	 * Encode integer as variable length quantity in byte array.
 	 * @param {Number} n
 	 * @return {Uint8Array}
 	 */
@@ -43,7 +43,7 @@ function Doublespeak(isDebug = false) {
 	};
 
 	/**
-	 * Decode VLQ to integer.
+	 * Decode variable length quantity to integer.
 	 * @param {Uint8Array} bytes
 	 * @return {Number}
 	 */
@@ -65,6 +65,7 @@ function Doublespeak(isDebug = false) {
 
 		let out = '';
 		for (var arg of args) {
+			if (!arg) continue;
 			if (!(arg instanceof Uint8Array))
 				arg = Uint8Array.from(arg);
 			for (var i = 0, aLen = arg.length; i < aLen; i++)
@@ -144,16 +145,23 @@ function Doublespeak(isDebug = false) {
 	/**
 	 * Encode plaintext to ciphertext.
 	 * @param {String} str
-	 * @return {String}
+	 * @return {Promise}
 	 */
 	this.encodeText = function (str) {
 		const bytes = new TextEncoder().encode(this.filterStr(str));
-		// 0x44 0x0 == 'D\u0000' protocol signature and version
-		const out = bytes.length ? this.encodeBytes([0x44, 0x0], this.crc32(bytes).bytes, [0x1], this.encodeLength(bytes.length), bytes) : '';
-		if (isDebug) console.info('Original size:', bytes.length, 'bytes,', str.length, 'characters',
-			'\nEncoded size:', out.length * 3, 'bytes,', out.length, 'characters');
+		const salt = crypto.getRandomValues(new Uint8Array(16));
 
-		return out;
+		let encode = (bytes, salt) => {
+			// 0x44 0x0 == 'D\u0000' protocol signature and version
+			const str = bytes.length ? this.encodeBytes([0x44, 0x0], this.crc32(bytes).bytes, [!this.masterKey ? 0x1 : 0x0], this.encodeLength(bytes.length), salt && [0x0], salt, bytes) : '';
+			if (isDebug) console.info('Original size:', bytes.length, 'bytes',
+				'\nEncoded size:', str.length * 3, 'bytes,', str.length, 'characters');
+			return str;
+		};
+
+		return !this.masterKey
+			? Promise.resolve(encode(bytes))
+			: this.encrypt(bytes, salt, encode);
 	};
 
 	/**
@@ -161,7 +169,7 @@ function Doublespeak(isDebug = false) {
 	 * @param {String} type
 	 * @param {String} name
 	 * @param {Uint8Array} bytes
-	 * @return {String}
+	 * @return {Promise}
 	 */
 	this.encodeFile = function (type, name, bytes) {
 		const head = new TextEncoder().encode(type + '\0' + name + '\0');
@@ -169,45 +177,18 @@ function Doublespeak(isDebug = false) {
 		pack.set(head);
 		pack.set(bytes, head.length);
 
-		// 0x44 0x0 == 'D\u0000' protocol signature and version
-		const str = this.encodeBytes([0x44, 0x0], this.crc32(pack).bytes, [0x2], this.encodeLength(pack.length), pack);
-		if (isDebug) console.info('File:', name + ',', (type || 'unknown'),
-			'\nOriginal size:', bytes.length, 'bytes',
-			'\nEncoded size:', str.length * 3, 'bytes,', str.length, ' characters');
+		let encode = pack => {
+			// 0x44 0x0 == 'D\u0000' protocol signature and version
+			const str = this.encodeBytes([0x44, 0x0], this.crc32(pack).bytes, [!this.key ? 0x2 : 0x0], this.encodeLength(pack.length), pack);
+			if (isDebug) console.info('File:', name + ',', (type || 'unknown'),
+				'\nOriginal size:', bytes.length, 'bytes',
+				'\nEncoded size:', str.length * 3, 'bytes,', str.length, ' characters');
+			return str;
+		};
 
-		return str;
-	};
-
-	/**
-	 * Convert byte array to UTF-8 text.
-	 * @param {Uint8Array} bytes
-	 * @return {String}
-	 */
-	this.extractText = function (bytes) {
-		return new TextDecoder().decode(bytes);
-	};
-
-	/**
-	 * Convert byte array to file components.
-	 * @param {Uint8Array} bytes
-	 * @return {Object}
-	 */
-	this.extractFile = function (bytes) {
-		// Slice byte array by null terminators
-		let nullPos = [];
-		for (var i = 0, bLen = bytes.length; i < bLen; i++)
-			if (!bytes[i]) {
-				nullPos.push(i);
-				if (nullPos.length > 1) break;
-			}
-
-		const type = new TextDecoder().decode(bytes.subarray(0, nullPos[0]));
-		const name = new TextDecoder().decode(bytes.subarray(nullPos[0] + 1, nullPos[1]));
-		const blob = new Blob([bytes.subarray(nullPos[1] + 1)], { type });
-		const url = URL.createObjectURL(blob);
-		const size = blob.size;
-
-		return { type, name, url, size };
+		return !this.masterKey
+			? Promise.resolve(encode(pack))
+			: this.encrypt(pack, encode);
 	};
 
 	/**
@@ -238,7 +219,7 @@ function Doublespeak(isDebug = false) {
 			// Get length of variable length quantity data length field
 			// by checking the first bit of each byte from VLQ start position
 			let VLQLen = 0;
-			while (bytes[6 + ++VLQLen] & 0x80) { }
+			while (bytes[6 + ++VLQLen] & 0x80) {}
 			// Get start position of data field
 			const dataStart = 7 + VLQLen;
 			const header = bytes.subarray(2, dataStart);
@@ -272,6 +253,43 @@ function Doublespeak(isDebug = false) {
 	};
 
 	/**
+	 * Convert byte array to UTF-8 text.
+	 * @param {Uint8Array} bytes
+	 * @return {Promise}
+	 */
+	this.extractText = function (bytes) {
+		let decode = bytes => new TextDecoder().decode(bytes);
+		return this.decrypt(bytes, decode);
+	};
+
+	/**
+	 * Convert byte array to file components.
+	 * @param {Uint8Array} bytes
+	 * @return {Promise}
+	 */
+	this.extractFile = function (bytes) {
+		let decode = bytes => {
+			// Slice byte array by null terminators
+			let nullPos = [];
+			for (var i = 0, bLen = bytes.length; i < bLen; i++)
+				if (!bytes[i]) {
+					nullPos.push(i);
+					if (nullPos.length > 1) break;
+				}
+
+			const type = new TextDecoder().decode(bytes.subarray(0, nullPos[0]));
+			const name = new TextDecoder().decode(bytes.subarray(nullPos[0] + 1, nullPos[1]));
+			const blob = new Blob([bytes.subarray(nullPos[1] + 1)], { type });
+			const url = URL.createObjectURL(blob);
+			const size = blob.size;
+
+			return { type, name, url, size };
+		};
+
+		return this.decrypt(bytes, decode);
+	};
+
+	/**
 	 * Initialize CRC-32 table.
 	 * @return {Number[]}
 	 */
@@ -288,7 +306,7 @@ function Doublespeak(isDebug = false) {
 	})());
 
 	/**
-	 * Calculate CRC-32 and convert to byte array
+	 * Calculate CRC-32 and convert to byte array.
 	 * @param {Uint8Array} bytes
 	 * @return {Object}
 	 */
@@ -306,4 +324,80 @@ function Doublespeak(isDebug = false) {
 			bytes.push(crc >> i & 0xFF);
 		return { crc, bytes: Uint8Array.from(bytes) };
 	};
+
+	/**
+	 * Derive 128-bit AES-CTR encryption key from passphrase using PBKDF2.
+	 * @param {String} pass
+	 * @param {String} salt
+	 * @return {Promise}
+	 */
+	this.deriveKey = function (pass) {
+		if (!pass)
+			this.key = null;
+		else
+			crypto.subtle.importKey(
+				'raw',
+				new TextEncoder().encode(pass),
+				'PBKDF2',
+				false,
+				['deriveKey']
+			)
+			.then(masterKey => { this.masterKey = masterKey; });
+	};
+
+	/**
+	 * Encrypt byte array if encryption key exists.
+	 * @param {Uint8Array} bytes
+	 * @param {Function} encode
+	 * @return {Promise}
+	 */
+	this.encrypt = function (bytes, salt, encode) {
+		return Promise.resolve(
+			crypto.subtle.deriveKey(
+				{
+					name: 'PBKDF2',
+					salt,
+					iterations: 100,
+					hash: 'SHA-256'
+				},
+				this.masterKey,
+				{ name: 'AES-GCM', length: 128 },
+				false,
+				['encrypt', 'decrypt']
+			)
+			.then(key => {
+				crypto.subtle.encrypt({
+					name: 'AES-GCM',
+					iv: Uint8Array.of(0)
+				},
+					key,
+					bytes
+				)
+				.then(cipher => encode(new Uint8Array(cipher), salt))
+			})
+		);
+	};
+
+	/**
+	 * Decrypt byte array if encryption key exists.
+	 * @param {Uint8Array} bytes
+	 * @param {Function} decode
+	 * @return {Promise}
+	 */
+	this.decrypt = function (bytes, decode) {
+		return Promise.resolve(
+			!this.key
+				? decode(bytes)
+				: crypto.subtle.decrypt({
+					name: 'AES-GCM',
+					iv: ArrayBuffer(12)
+				},
+					this.key,
+					bytes
+				)
+				.then(plain => decode(new Uint8Array(plain)))
+		);
+	};
 }
+
+module.exports = new Doublespeak();
